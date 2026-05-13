@@ -1,0 +1,11 @@
+{
+    "id": "Sts2MultiplayerSync",
+    "name": "STS2 Multiplayer Sync",
+    "author": "inggom",
+    "description": "Bypass mod-mismatch on multiplayer join + warn host about gameplay-affecting mods + show client which mods to install or disable. Host-side scanner flags mods with affects_gameplay=true and offers one-click disable + restart. Client-side overlay surfaces the exact diff against the host's mod list when join would otherwise fail.",
+    "version": "0.1.0",
+    "has_pck": false,
+    "has_dll": true,
+    "dependencies": [],
+    "affects_gameplay": false
+}

@@ -1,0 +1,171 @@
+using System;
+using Godot;
+using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
+using Sts2MultiplayerSync.Localization;
+
+namespace Sts2MultiplayerSync.Runtime;
+
+public static class RestartCountdownModal
+{
+    private const int DefaultSeconds = 10;
+    private const string DefaultTitleKey = "modal_title";
+    private const string DefaultBodyKey = "modal_body";
+    private static NVerticalPopup? _popup;
+    private static Godot.Timer? _timer;
+    private static int _remaining;
+    private static string _managerDataDir = "";
+    private static bool _resolved;
+    private static Action? _onCancelCallback;
+    private static string _titleKey = DefaultTitleKey;
+    private static string _bodyKey = DefaultBodyKey;
+    private static object[] _extraBodyArgs = Array.Empty<object>();
+
+    public static void ShowOrReset(string managerDataDir, int seconds, string titleKey, string bodyKey, Action? onCancel = null, params object[] extraBodyArgs)
+    {
+        _onCancelCallback = onCancel;
+        _extraBodyArgs = extraBodyArgs ?? Array.Empty<object>();
+        ShowOrResetInner(managerDataDir, seconds, titleKey, bodyKey);
+    }
+
+    private static void ShowOrResetInner(string managerDataDir, int seconds, string titleKey, string bodyKey)
+    {
+        var mainLoop = Engine.GetMainLoop();
+        if (mainLoop is not SceneTree tree)
+        {
+            MainFile.Logger.Warn("no SceneTree; cannot show modal");
+            return;
+        }
+
+        Callable.From(() =>
+        {
+            try
+            {
+                _managerDataDir = managerDataDir;
+                _remaining = seconds;
+                _resolved = false;
+                _titleKey = titleKey;
+                _bodyKey = bodyKey;
+
+                if (_popup != null && GodotObject.IsInstanceValid(_popup))
+                {
+                    RefreshText();
+                    _timer?.Start();
+                    MainFile.Logger.Info($"countdown reset on existing popup ({seconds}s)");
+                    return;
+                }
+
+                ShowNew(tree);
+            }
+            catch (Exception ex)
+            {
+                MainFile.Logger.Warn($"failed to show modal: {ex}");
+            }
+        }).CallDeferred();
+    }
+
+    private static void ShowNew(SceneTree tree)
+    {
+        try
+        {
+            var scenePath = SceneHelper.GetScenePath("ui/vertical_popup");
+            var packed = ResourceLoader.Load<PackedScene>(scenePath);
+            if (packed == null)
+            {
+                MainFile.Logger.Warn($"NVerticalPopup scene not found at {scenePath}; modal will not appear.");
+                return;
+            }
+            var popup = packed.Instantiate<NVerticalPopup>();
+            tree.Root.AddChild(popup);
+            popup.SetText(Strings.Get(_titleKey), BuildBody());
+            popup.YesButton.SetText(Strings.Get("btn_restart_now"));
+            popup.YesButton.IsYes = true;
+            popup.YesButton.Released += _ => OnYes();
+            popup.NoButton.SetText(Strings.Get("btn_cancel"));
+            popup.NoButton.IsYes = false;
+            popup.NoButton.Visible = true;
+            popup.NoButton.Released += _ => OnNo();
+            popup.TreeExiting += OnPopupExiting;
+            _popup = popup;
+            StartTimer(tree, popup);
+            MainFile.Logger.Info($"native NVerticalPopup modal shown ({_remaining}s)");
+        }
+        catch (Exception ex)
+        {
+            MainFile.Logger.Warn($"native modal failed: {ex}");
+        }
+    }
+
+    private static void StartTimer(SceneTree tree, Node parent)
+    {
+        if (_timer != null && GodotObject.IsInstanceValid(_timer))
+        {
+            try { _timer.QueueFree(); } catch { }
+        }
+        _timer = null;
+        _timer = new Godot.Timer { WaitTime = 1.0, Autostart = true, OneShot = false };
+        parent.AddChild(_timer);
+        _timer.Timeout += OnTick;
+    }
+
+    private static void OnTick()
+    {
+        if (_resolved) return;
+        _remaining--;
+        RefreshText();
+        if (_remaining <= 0)
+        {
+            _resolved = true;
+            _timer?.Stop();
+            TriggerRestart();
+        }
+    }
+
+    private static void RefreshText()
+    {
+        if (_popup != null && GodotObject.IsInstanceValid(_popup))
+        {
+            _popup.SetText(Strings.Get(_titleKey), BuildBody());
+        }
+    }
+
+    private static string BuildBody()
+    {
+        if (_extraBodyArgs.Length == 0) return Strings.Get(_bodyKey, _remaining);
+        var args = new object[_extraBodyArgs.Length + 1];
+        Array.Copy(_extraBodyArgs, args, _extraBodyArgs.Length);
+        args[args.Length - 1] = _remaining;
+        return Strings.Get(_bodyKey, args);
+    }
+
+    private static void OnYes()
+    {
+        if (_resolved) return;
+        _resolved = true;
+        _timer?.Stop();
+        TriggerRestart();
+    }
+
+    private static void OnNo()
+    {
+        if (_resolved) return;
+        _resolved = true;
+        _timer?.Stop();
+        MainFile.Logger.Info("user chose Cancel → reverting pending changes.");
+        try { _onCancelCallback?.Invoke(); } catch (Exception ex) { MainFile.Logger.Warn($"revert error: {ex.Message}"); }
+        if (_popup != null && GodotObject.IsInstanceValid(_popup)) _popup.QueueFree();
+    }
+
+    private static void OnPopupExiting()
+    {
+        _popup = null;
+        _timer = null;
+        _onCancelCallback = null;
+    }
+
+    private static void TriggerRestart()
+    {
+        RestartHelper.TriggerRestart(_managerDataDir);
+    }
+}
