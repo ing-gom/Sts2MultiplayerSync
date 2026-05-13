@@ -4,6 +4,9 @@ A Slay the Spire 2 mod that lets you play multiplayer when your mod loadout does
 
 🇰🇷 [한국어 README](README.ko.md)
 
+> ⚠️ **v0.1.0-alpha — host-side only verified.**
+> Host-side `affects_gameplay` scanner, warning modal, staged-disable flow, and auto-restart are verified live (single-instance boot test). The **client-side `ModMismatch` bypass and mismatch overlay are NOT yet verified** — that path requires two running STS2 instances (host + client). Treat the client bypass as experimental until 0.1.0 (non-alpha) ships.
+
 ## What it does
 
 STS2 multiplayer rejects any client whose `affects_gameplay=true` mod list doesn't exactly match the host's. The check happens client-side inside `JoinFlow.HandleInitialGameInfoMessage` → `ConnectAsync` and throws `ClientConnectionFailedException("ModMismatch")` on any diff.

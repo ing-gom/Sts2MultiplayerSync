@@ -4,6 +4,9 @@
 
 🇺🇸 [English README](README.md)
 
+> ⚠️ **v0.1.0-alpha — 호스트 측만 검증됨.**
+> 호스트 측 `affects_gameplay` 스캐너, 경고 모달, 자동 비활성화 + 재시작 흐름은 단독 부팅 테스트로 라이브 검증 완료. **클라이언트 측 `ModMismatch` 우회와 mismatch 오버레이는 아직 미검증** — 그 경로는 STS2 인스턴스 두 개 (host + client) 가 동시에 떠 있어야 검증 가능해서, 알파 단계로 publish. 정식 v0.1.0 까지는 client 우회를 실험적 기능으로 봐주세요.
+
 ## 동작 개요
 
 STS2 멀티플레이는 client 의 `affects_gameplay=true` mod 목록이 host 와 한 글자라도 다르면 join 자체를 거부해요. 검증은 client 쪽 `JoinFlow.HandleInitialGameInfoMessage` → `ConnectAsync` 에서 일어나고 `ClientConnectionFailedException("ModMismatch")` 가 발생하면서 연결 종료.
