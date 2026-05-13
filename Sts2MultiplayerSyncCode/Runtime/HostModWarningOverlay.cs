@@ -69,14 +69,15 @@ public static class HostModWarningOverlay
         foreach (var m in mods) desired[m.ModId] = false;
 
         var changed = Sts2SettingsWriter.ApplyModEnabledState(settings, desired);
+        var memChanged = Sts2SettingsWriter.MutateInMemoryModList(desired);
         if (changed)
         {
             Sts2SettingsWriter.Save(settings);
-            MainFile.Logger.Info($"staged disable for {mods.Count} gameplay mod(s) in settings.save — will apply on next restart.");
+            MainFile.Logger.Info($"staged disable for {mods.Count} gameplay mod(s): file={changed} mem={memChanged}. Applies on next restart.");
         }
         else
         {
-            MainFile.Logger.Info("staged disable was a no-op (already disabled or not in mod_list).");
+            MainFile.Logger.Info($"staged disable was a no-op (already disabled): file={changed} mem={memChanged}.");
         }
     }
 
@@ -90,10 +91,11 @@ public static class HostModWarningOverlay
         var desired = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var m in _pendingMods) desired[m.ModId] = true;
         var changed = Sts2SettingsWriter.ApplyModEnabledState(settings, desired);
+        var memChanged = Sts2SettingsWriter.MutateInMemoryModList(desired);
         if (changed)
         {
             Sts2SettingsWriter.Save(settings);
-            MainFile.Logger.Info("host chose Cancel — reverted staged disable in settings.save.");
+            MainFile.Logger.Info($"host chose Cancel — reverted staged disable: file={changed} mem={memChanged}.");
         }
     }
 }

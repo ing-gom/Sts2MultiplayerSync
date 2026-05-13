@@ -76,10 +76,11 @@ public static class ClientMismatchOverlay
         var desired = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in modIds) desired[id] = false;
         var changed = Sts2SettingsWriter.ApplyModEnabledState(settings, desired);
+        var memChanged = Sts2SettingsWriter.MutateInMemoryModList(desired);
         if (changed)
         {
             Sts2SettingsWriter.Save(settings);
-            MainFile.Logger.Info($"client mismatch: staged disable for {modIds.Count} extra mod(s) in settings.save.");
+            MainFile.Logger.Info($"client mismatch: staged disable for {modIds.Count} extra mod(s): file={changed} mem={memChanged}.");
         }
     }
 
@@ -91,10 +92,11 @@ public static class ClientMismatchOverlay
         var desired = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         foreach (var id in modIds) desired[id] = true;
         var changed = Sts2SettingsWriter.ApplyModEnabledState(settings, desired);
+        var memChanged = Sts2SettingsWriter.MutateInMemoryModList(desired);
         if (changed)
         {
             Sts2SettingsWriter.Save(settings);
-            MainFile.Logger.Info("client mismatch: user chose Cancel — reverted staged disable.");
+            MainFile.Logger.Info($"client mismatch: user chose Cancel — reverted disable: file={changed} mem={memChanged}.");
         }
     }
 }
